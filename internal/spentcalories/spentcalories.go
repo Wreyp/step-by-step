@@ -28,9 +28,15 @@ func parseTraining(data string) (int, string, time.Duration, error) {
 	if err != nil {
 		return 0, "", 0, err
 	}
+	if number <= 0 {
+		return 0, "", 0, fmt.Errorf("Error")
+	}
 	durat, err := time.ParseDuration(part[2])
 	if err != nil {
 		return 0, "", 0, err
+	}
+	if durat <= 0 {
+		return 0, "", 0, fmt.Errorf("Error")
 	}
 	return number, activity, durat, nil
 }
@@ -58,14 +64,20 @@ func TrainingInfo(data string, weight, height float64) (string, error) {
 		log.Println(err)
 		return "", err
 	}
-	duratInH := durat.Seconds() / 3600
+	duratInH := durat.Hours()
 	speed := meanSpeed(number, height, durat)
 	var calorii float64
 	switch activity {
 	case "Ходьба":
 		calorii, err = WalkingSpentCalories(number, weight, height, durat)
-	case "бег":
+		if err != nil {
+			return "", err
+		}
+	case "Бег":
 		calorii, err = RunningSpentCalories(number, weight, height, durat)
+		if err != nil {
+			return "", err
+		}
 	default:
 		return "", fmt.Errorf("неизвестный тип тренировки")
 	}
@@ -84,11 +96,11 @@ func RunningSpentCalories(steps int, weight, height float64, duration time.Durat
 	if height <= 0 {
 		return 0, fmt.Errorf("Ошибка роста")
 	}
-	if duration.Minutes() <= 0 {
-		return 0, nil
+	if duration <= 0 {
+		return 0, fmt.Errorf("Error")
 	}
 
-	return (weight * meanSpeed(steps, height, duration) * duration.Minutes()) / float64(minInH), nil
+	return (weight * meanSpeed(steps, height, duration) * duration.Hours()), nil
 }
 
 func WalkingSpentCalories(steps int, weight, height float64, duration time.Duration) (float64, error) {
@@ -102,9 +114,11 @@ func WalkingSpentCalories(steps int, weight, height float64, duration time.Durat
 	if height <= 0 {
 		return 0, fmt.Errorf("Ошибка веса")
 	}
-	if duration.Minutes() <= 0 {
+	if duration <= 0 {
 		return 0, fmt.Errorf("Ошибка времени")
 	}
 
-	return ((weight * meanSpeed(steps, height, duration)) / float64(minInH)) * walkingCaloriesCoefficient, nil
+	durationInmin := duration.Minutes()
+
+	return ((weight * meanSpeed(steps, height, duration)) * float64(durationInmin) / float64(minInH)) * walkingCaloriesCoefficient, nil
 }
